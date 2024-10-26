@@ -1,17 +1,12 @@
 ﻿// @ts-check
+/// <reference types="jquery" />
 /// <reference types="interactjs" />
 
 /**
- * @type {Array<string>}
+ * @type {Array<HTMLElement>}
  * Stores the selected items for the noun-verb-noun sequence.
  */
 let selectedItems = [];
-
-/**
- * @type {Array<string>}
- * Stores the history of clicks for display.
- */
-let clickHistory = [];
 
 /**
  * Initializes interact.js for draggable functionality.
@@ -32,11 +27,20 @@ function initializeDraggableNodes() {
     });
 }
 
+
+/**
+ * Returns the text content of the selected items.
+ * @returns {string[]}
+ */
+function selectedText() {
+    return selectedItems.map(x => $(x).text());
+}
+
 /**
  * Updates the click history display.
  */
 function updateHistory() {
-    $('#clickHistory').text(clickHistory.join(' -> '));
+    $('#clickHistory').text(selectedText().join(' -> '));
 }
 
 /**
@@ -45,8 +49,7 @@ function updateHistory() {
  */
 function selectNode($node) {
     $node.addClass('highlight');
-    selectedItems.push($node.text());
-    clickHistory.push($node.text());
+    selectedItems.push($node.get());
     updateHistory();
 }
 
@@ -55,7 +58,7 @@ function selectNode($node) {
  * Clears the selected items and resets the highlighted nodes after completion.
  */
 async function initiateMerge() {
-    const [subject, verb, object] = selectedItems;
+    const [subject, verb, object] = selectedText();
     
     const mergeResult = await getMergeResult(subject, verb, object);
     if(mergeResult){
@@ -87,7 +90,7 @@ async function getMergeResult(subject, verb, object){
         const result = await response.json();
         return {
             word: result.word,
-            partOfSpeech: result.partOfSpeech
+            partOfSpeech: result.partOfSpeech.toLowerCase()
         };
     } catch (error) {
         console.error('Error:', error);
@@ -101,12 +104,17 @@ async function getMergeResult(subject, verb, object){
  * @param {string} partOfSpeech - The part of speech of the returned word, either 'noun' or 'verb'.
  */
 function displayResult(word, partOfSpeech) {
-    const $node = $('<div class="node"></div>');
+    const existing = $('.node').filter((_, node) => $(node).text() === word && $(node).attr('data-type') === partOfSpeech);
+    if(existing.length > 0) return; // Prevent duplicates
+    
+    
+    const className = "node " + (partOfSpeech === 'verb' ? 'verb' : 'noun');
+    const $node = $('<div class="' + className + '"></div>');
     $node.text(word);
     $node.attr('data-type', partOfSpeech === 'verb' ? 'verb' : 'noun');
     $node.css({
-        top: `${Math.random() * 1500 + 100}px`,
-        left: `${Math.random() * 1500 + 100}px`
+        top: `${Math.random() * 200 + 100}px`,
+        left: `${Math.random() * 200 + 100}px`
     });
 
     // Add click event and draggable functionality to the new node
