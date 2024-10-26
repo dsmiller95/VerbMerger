@@ -18,9 +18,25 @@ public interface IMergerRepository
     public Task<MergeOutput> GetOutput(MergeInput input);
 }
 
-public class MergerRepository : IMergerRepository
+public class MergerRepository(IMergePersistence persistence, ILogger<MergerRepository> logger) : IMergerRepository
 {
     public async Task<MergeOutput> GetOutput(MergeInput input)
+    {
+        var persistedOutput = await persistence.GetPersistedOutput(input);
+        if (persistedOutput != null)
+        {
+            logger.LogInformation("Cache hit for {Input}", input);
+            return persistedOutput;
+        }
+        
+        logger.LogInformation("Cache miss for {Input}", input);
+
+        var output = GetOutputInternal(input);
+        await persistence.PersistOutput(input, output);
+        return output;
+    }
+
+    private MergeOutput GetOutputInternal(MergeInput input)
     {
         var rng = new Random();
         return rng.Next(0, 3) switch
