@@ -40,4 +40,10 @@ app.MapGet("/api/merge", async (
     .WithName("Merge")
     .WithOpenApi();
 
+app.MapGet("/api/admin/dump", async (IMergePersistence persistence) =>
+{
+    var dump = await persistence.DumpCache();
+    return dump;
+}).WithName("DumpCache").WithOpenApi();
+
 app.Run();
