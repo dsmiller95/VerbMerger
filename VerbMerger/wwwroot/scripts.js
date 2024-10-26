@@ -8,6 +8,7 @@
  */
 let selectedItems = [];
 
+
 /**
  * Initializes interact.js for draggable functionality.
  */
@@ -65,7 +66,15 @@ async function initiateMerge() {
         displayResult(mergeResult.word, mergeResult.partOfSpeech);
     }
 
-    // Clear selections after request
+    clearSelections();
+}
+
+/**
+ * Clears the current selections and resets the highlighted nodes.
+ * This function can be called to reset the selection state.
+ * @returns {void}
+ */
+function clearSelections() {
     $('.node.highlight').removeClass('highlight');
     selectedItems = [];
 }
@@ -119,15 +128,8 @@ function displayResult(word, partOfSpeech) {
 
     // Add click event and draggable functionality to the new node
     $node.on('click', () => {
-        const type = $node.attr('data-type');
-        if ((selectedItems.length === 0 || selectedItems.length === 2) && type === 'noun') {
-            selectNode($node);
-        } else if (selectedItems.length === 1 && type === 'verb') {
-            selectNode($node);
-        }
-        if (selectedItems.length === 3) {
-            initiateMerge();
-        }
+        //const $node = $(this);
+        handleNodeClick($node);
     });
 
     $('#workspace').append($node);
@@ -152,20 +154,36 @@ function displayResult(word, partOfSpeech) {
 function setupNodes() {
     $('.node').on('click', function () {
         const $node = $(this);
-        const type = $node.attr('data-type');
-
-        if ((selectedItems.length === 0 || selectedItems.length === 2) && type === 'noun') {
-            selectNode($node);
-        } else if (selectedItems.length === 1 && type === 'verb') {
-            selectNode($node);
-        }
-
-        if (selectedItems.length === 3) {
-            initiateMerge();
-        }
+        handleNodeClick($node);
     });
 
     initializeDraggableNodes();
+}
+
+/**
+ * Handles the click event for a node.
+ * @param {JQuery<HTMLElement>} $node - The clicked node element.
+ */
+function handleNodeClick($node) {
+    const type = $node.attr('data-type');
+
+    if(type === "noun"){
+        if (selectedItems.length === 0 || selectedItems.length === 2) {
+            selectNode($node);
+        }else{
+            clearSelections();
+        }
+    }else if (type === "verb") {
+        if (selectedItems.length === 1) {
+            selectNode($node);
+        }else {
+            clearSelections();
+        }
+    }
+
+    if (selectedItems.length === 3) {
+        initiateMerge();
+    }
 }
 
 // Initialize the nodes on page load
