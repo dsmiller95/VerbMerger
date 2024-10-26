@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using OpenAI.Extensions;
 using VerbMerger.Merger;
 
@@ -26,7 +27,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/merge/{subject}/{verb}/{object}", async (string subject, string verb, string @object, IMergerRepository repository) =>
+app.MapGet("/merge", async (
+        [FromQuery] string subject,
+        [FromQuery] string verb,
+        [FromQuery] string @object,
+        IMergerRepository repository) =>
     {
         var output = await repository.GetOutput(new MergeInput(subject, verb, @object));
         return output;
