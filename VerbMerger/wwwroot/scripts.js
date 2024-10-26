@@ -43,6 +43,12 @@ function selectedText() {
 function updateHistory() {
     $('#clickHistory').text(selectedText().join(' -> '));
 }
+function setHistoryResult(extraResult){
+    const history = $('#clickHistory');
+    const prevText = history.text();
+    const newText = prevText + " = " + extraResult;
+    history.text(newText);
+}
 
 /**
  * Handles node selection and updating the selected items.
@@ -113,6 +119,9 @@ async function getMergeResult(subject, verb, object){
  * @param {string} partOfSpeech - The part of speech of the returned word, either 'noun' or 'verb'.
  */
 function displayResult(word, partOfSpeech) {
+
+    setHistoryResult(word + ", " + partOfSpeech);
+    
     const existing = $('.node').filter((_, node) => $(node).text() === word && $(node).attr('data-type') === partOfSpeech);
     if(existing.length > 0) return; // Prevent duplicates
     
@@ -161,7 +170,7 @@ function setupNodes() {
 }
 
 /**
- * Handles the click event for a node.
+ * Handles the click event for a node.  
  * @param {JQuery<HTMLElement>} $node - The clicked node element.
  */
 function handleNodeClick($node) {
