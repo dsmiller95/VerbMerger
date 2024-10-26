@@ -1,6 +1,0 @@
-﻿services:
-  verbmerger:
-    image: verbmerger
-    build:
-      context: .
-      dockerfile: VerbMerger/Dockerfile
