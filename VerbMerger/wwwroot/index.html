@@ -7,7 +7,15 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>Verb Merger</h1>
+<table class="heading-table">
+    <tbody>
+    <tr>
+        <td><h1>Verb Merger</h1></td>
+        <td>Click on a noun, then a verb, then a noun, to create a new word</td>
+    </tr>
+    </tbody>
+</table>
+<div id="history">Phrase: <span id="clickHistory"></span></div>
 <div id="workspace">
     <!-- Example nodes; could be generated dynamically based on API data -->
     <div class="node noun" data-type="noun" style="top: 100px; left: 100px;">Fire</div>
@@ -18,7 +26,6 @@
     <div class="node noun" data-type="noun" style="top: 300px; left: 300px;">Verb</div>
     <div class="node noun" data-type="noun" style="top: 300px; left: 400px;">Noun</div>
 </div>
-<div id="history">History: <span id="clickHistory"></span></div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 <script src="scripts.js"></script>
