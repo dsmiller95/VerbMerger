@@ -18,7 +18,11 @@ public interface IMergerRepository
     public Task<MergeOutput> GetOutput(MergeInput input);
 }
 
-public class MergerRepository(IMergePersistence persistence, ILogger<MergerRepository> logger) : IMergerRepository
+public class MergerRepository(
+    ILogger<MergerRepository> logger,
+    IMergePersistence persistence,
+    IMergerProompter proompter
+    ) : IMergerRepository
 {
     public async Task<MergeOutput> GetOutput(MergeInput input)
     {
@@ -31,7 +35,9 @@ public class MergerRepository(IMergePersistence persistence, ILogger<MergerRepos
         
         logger.LogInformation("Cache miss for {Input}", input);
 
-        var output = GetOutputInternal(input);
+        var promptInput = new[] { input };
+        var promptOutput = await proompter.PromptBatch(promptInput);
+        var output = promptOutput.Single();
         await persistence.PersistOutput(input, output);
         return output;
     }
