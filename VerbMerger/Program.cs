@@ -28,7 +28,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
     
-app.MapGet("/merge", async (
+app.MapGet("/api/merge", async (
         [FromQuery] string subject,
         [FromQuery] string verb,
         [FromQuery] string @object,
