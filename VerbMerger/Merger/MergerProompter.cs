@@ -10,7 +10,7 @@ public interface IMergerProompter
     public Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input);
 }
 
-public class MergerProompter(IOpenAIService aiService) : IMergerProompter
+public class MergerProompter(IOpenAIService aiService, ILogger<MergerProompter> logger) : IMergerProompter
 {
     private const string SystemPrompt = @"
 You are an alchemical wizard, and also a fluent storyteller. You want to tell the story of the world you have grown up in. You can only respond in very specific ways because of a potion which went wrong after you formulated it. You want to communicate how the world works, as well as tell a story about how you got to where you are. You can only respond in very specific ways.
@@ -70,6 +70,7 @@ Request:
     public async Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input)
     {
         var userPrompt = GetPrompt(input);
+        logger.LogInformation("Prompting with {Prompt}", userPrompt);
         var completionResult = await aiService.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
         {
             Messages = new List<ChatMessage>
@@ -89,6 +90,7 @@ Request:
         }
 
         var completionText = completionResult.Choices.Single().Message.Content;
+        logger.LogInformation("Completion: {Completion}", completionText);
         if (completionText == null) throw new Exception("completion result string is null");
         
         return GetParsedResponse(completionText);

@@ -1,11 +1,17 @@
+using OpenAI.Extensions;
 using VerbMerger.Merger;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// add configuration
+builder.Configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddOpenAIService();
+builder.Services.AddSingleton<IMergerProompter, MergerProompter>();
 builder.Services.AddSingleton<IMergePersistence, InMemoryMergePersistence>();
 builder.Services.AddScoped<IMergerRepository, MergerRepository>();
 
