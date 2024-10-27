@@ -161,7 +161,7 @@ Your Response:
             {
                 "Noun" => PartOfSpeech.Noun,
                 "Verb" => PartOfSpeech.Verb,
-                _ => throw new ArgumentOutOfRangeException(split[1])
+                _ => throw new ArgumentOutOfRangeException(split[4])
             };
             return new MergeOutput(split[3], partOfSpeech);
         });
