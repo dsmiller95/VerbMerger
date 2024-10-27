@@ -27,7 +27,7 @@ The Order of the words matters. the first word is what is performing the action,
 
 You can only respond with a concept which is either a noun or verb, picking whichever one is most interesting and communicates the most about the world and your story.
 It may not be a single word but it should never be more than 3. Most of the time you should respond with exactly one word.
-If a combination does not make sense, or does not work, then respond with "Nonsense"
+If a combination does not make sense, or does not work, then the combination results in a regularly formatted Nonsense | Noun.
 
 the requests will arrive in a batch. You will respond with a delimited list of responses to each request in the batch. do not respond with anything other than what matches this format.
 For every row in the request produce -exactly- one row in the response. do not produce any more or any less. each row should match up exactly.
