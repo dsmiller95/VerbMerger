@@ -8,27 +8,6 @@
  */
 let selectedItems = [];
 
-
-/**
- * Initializes interact.js for draggable functionality.
- */
-function initializeDraggableNodes() {
-    interact('.node').draggable({
-        listeners: {
-            move(event) {
-                const $target = $(event.target);
-                const x = (parseFloat($target.attr('data-x')) || 0) + event.dx;
-                const y = (parseFloat($target.attr('data-y')) || 0) + event.dy;
-
-                $target.css('transform', `translate(${x}px, ${y}px)`);
-                $target.attr('data-x', x);
-                $target.attr('data-y', y);
-            }
-        }
-    });
-}
-
-
 /**
  * Returns the text content of the selected items.
  * @returns {string[]}
@@ -76,16 +55,6 @@ async function initiateMerge() {
 }
 
 /**
- * Clears the current selections and resets the highlighted nodes.
- * This function can be called to reset the selection state.
- * @returns {void}
- */
-function clearSelections() {
-    $('.node.highlight').removeClass('highlight');
-    selectedItems = [];
-}
-
-/**
  * Fetches the merge result from the API.
  * @param {string} subject - The subject noun.
  * @param {string} verb - The verb.
@@ -111,6 +80,16 @@ async function getMergeResult(subject, verb, object){
         console.error('Error:', error);
         return null;
     }
+}
+
+/**
+ * Clears the current selections and resets the highlighted nodes.
+ * This function can be called to reset the selection state.
+ * @returns {void}
+ */
+function clearSelections() {
+    $('.node.highlight').removeClass('highlight');
+    selectedItems = [];
 }
 
 /**
@@ -142,19 +121,7 @@ function displayResult(word, partOfSpeech) {
     });
 
     $('#workspace').append($node);
-    interact($node[0]).draggable({
-        listeners: {
-            move(event) {
-                const $target = $(event.target);
-                const x = (parseFloat($target.attr('data-x')) || 0) + event.dx;
-                const y = (parseFloat($target.attr('data-y')) || 0) + event.dy;
-
-                $target.css('transform', `translate(${x}px, ${y}px)`);
-                $target.attr('data-x', x);
-                $target.attr('data-y', y);
-            }
-        }
-    });
+    interact($node[0]).draggable(defaultDraggableOptions);
 }
 
 /**
@@ -194,6 +161,30 @@ function handleNodeClick($node) {
         initiateMerge();
     }
 }
+
+
+const defaultDraggableOptions = {
+    listeners: {
+        move(event) {
+            const $target = $(event.target);
+            const x = (parseFloat($target.attr('data-x')) || 0) + event.dx;
+            const y = (parseFloat($target.attr('data-y')) || 0) + event.dy;
+
+            $target.css('transform', `translate(${x}px, ${y}px)`);
+            $target.attr('data-x', x);
+            $target.attr('data-y', y);
+        }
+    }
+};
+
+/**
+ * Initializes interact.js for draggable functionality.
+ */
+function initializeDraggableNodes() {
+    interact('.node').draggable(defaultDraggableOptions);
+}
+
+
 
 // Initialize the nodes on page load
 $(document).ready(setupNodes);

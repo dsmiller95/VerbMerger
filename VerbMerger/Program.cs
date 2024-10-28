@@ -10,6 +10,9 @@ builder.AddServiceDefaults();
 // add configuration
 builder.Configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true);
 
+builder.Services.Configure<VerbMergerConfig>(builder.Configuration.GetSection(nameof(VerbMergerConfig)));
+
+
 builder.AddMongoDBClient("mongodb");
 
 // Add services to the container.

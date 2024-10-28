@@ -1,4 +1,5 @@
-﻿using OpenAI.Interfaces;
+﻿using Microsoft.Extensions.Options;
+using OpenAI.Interfaces;
 using OpenAI.Managers;
 using OpenAI.ObjectModels;
 using OpenAI.ObjectModels.RequestModels;
@@ -10,7 +11,10 @@ public interface IMergerProompter
     public Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input);
 }
 
-public class MergerProompter(IOpenAIService aiService, ILogger<MergerProompter> logger) : IMergerProompter
+public class MergerProompter(
+    IOpenAIService aiService,
+    IOptions<VerbMergerConfig> options,
+    ILogger<MergerProompter> logger) : IMergerProompter
 {
     private const string SystemPrompt = """
 You are an alchemical wizard, and also a fluent storyteller. You want to tell the story of the world you have grown up in.
@@ -116,6 +120,10 @@ Your Response:
         input = input.ToList();
         var userPrompt = GetPrompt(input);
         logger.LogInformation("Prompting with {Prompt}", userPrompt);
+        
+        var delay = options.Value.ArtificialPromptDelaySeconds;
+        var artificialDelay = delay <= 0 ? null : Task.Delay(TimeSpan.FromSeconds(options.Value.ArtificialPromptDelaySeconds));
+        
         var completionResult = await aiService.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
         {
             Messages = new List<ChatMessage>
@@ -128,6 +136,8 @@ Your Response:
             MaxTokens = 2048,
             N = 1,
         });
+
+        if (artificialDelay != null) await artificialDelay;
 
         if (!completionResult.Successful)
         {
