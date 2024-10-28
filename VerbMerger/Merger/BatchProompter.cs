@@ -8,7 +8,7 @@ namespace VerbMerger.Merger;
 
 public interface IMergerBatchProompter
 {
-    public Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input);
+    public Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input, CancellationToken cancellationToken);
 }
 
 public class BatchProompter(
@@ -115,14 +115,14 @@ Request:
 Your Response:
 ";
     
-    public async Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input)
+    public async Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input, CancellationToken cancellationToken)
     {
         input = input.ToList();
         var userPrompt = GetPrompt(input);
         logger.LogInformation("Prompting with {Prompt}", userPrompt);
         
         var delay = options.Value.ArtificialPromptDelaySeconds;
-        var artificialDelay = delay <= 0 ? null : Task.Delay(TimeSpan.FromSeconds(options.Value.ArtificialPromptDelaySeconds));
+        var artificialDelay = delay <= 0 ? null : Task.Delay(TimeSpan.FromSeconds(options.Value.ArtificialPromptDelaySeconds), cancellationToken);
         
         var completionResult = await aiService.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
         {
@@ -135,7 +135,7 @@ Your Response:
             Temperature = 1,
             MaxTokens = 2048,
             N = 1,
-        });
+        }, cancellationToken: cancellationToken);
 
         if (artificialDelay != null) await artificialDelay;
 
