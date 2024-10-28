@@ -6,15 +6,15 @@ using OpenAI.ObjectModels.RequestModels;
 
 namespace VerbMerger.Merger;
 
-public interface IMergerProompter
+public interface IMergerBatchProompter
 {
     public Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input);
 }
 
-public class MergerProompter(
+public class BatchProompter(
     IOpenAIService aiService,
     IOptions<VerbMergerConfig> options,
-    ILogger<MergerProompter> logger) : IMergerProompter
+    ILogger<BatchProompter> logger) : IMergerBatchProompter
 {
     private const string SystemPrompt = """
 You are an alchemical wizard, and also a fluent storyteller. You want to tell the story of the world you have grown up in.

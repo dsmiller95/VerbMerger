@@ -26,7 +26,8 @@ builder.Services.AddMemoryCache(opts =>
     opts.SizeLimit = 20 * megabyte;
 });
 builder.Services.AddOpenAIService();
-builder.Services.AddScoped<IMergerProompter, MergerProompter>();
+builder.Services.AddSingleton<IMergerBatchProompter, BatchProompter>();
+builder.Services.AddSingleton<IMergerProompter, MergerProompterBatchManager>();
 builder.Services.AddScoped<IMergePersistence, MongoDbMergePersistence>();
 builder.Services.AddScoped<IMergerRepository, MergerRepository>();
 

@@ -35,9 +35,7 @@ public class MergerRepository(
         
         logger.LogInformation("Cache miss for {Input}", input);
 
-        var promptInput = new[] { input };
-        var promptOutput = await proompter.PromptBatch(promptInput);
-        var output = promptOutput.Single();
+        var output = await proompter.Prompt(input);
         await persistence.PersistOutput(input, output);
         return output;
     }

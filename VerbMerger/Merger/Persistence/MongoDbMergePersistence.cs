@@ -67,7 +67,7 @@ public class MongoDbMergePersistence : IMergePersistence
         if (updateResult.IsAcknowledged)
         {
             if (updateResult.ModifiedCount > 0) return;
-            var didUpsert = updateResult.UpsertedId == null || updateResult.UpsertedId.BsonType == BsonType.Null;
+            var didUpsert = updateResult.UpsertedId != null && updateResult.UpsertedId.BsonType != BsonType.Null;
             if (didUpsert) return;
             
             _logger.LogError("Failed to upsert merge result for {Input}. Inserting explicitly", input);
