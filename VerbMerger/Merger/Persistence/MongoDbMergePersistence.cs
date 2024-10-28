@@ -64,8 +64,12 @@ public class MongoDbMergePersistence : IMergePersistence
         };
 
         var updateResult = await _collection.UpdateOneAsync(filter, update, updateOptions);
-        if (updateResult.IsAcknowledged && updateResult.UpsertedId.BsonType == BsonType.Null)
+        if (updateResult.IsAcknowledged)
         {
+            if (updateResult.ModifiedCount > 0) return;
+            var didUpsert = updateResult.UpsertedId == null || updateResult.UpsertedId.BsonType == BsonType.Null;
+            if (didUpsert) return;
+            
             _logger.LogError("Failed to upsert merge result for {Input}. Inserting explicitly", input);
             await _collection.InsertOneAsync(new DbModel(input, output, currentMs));
         }
