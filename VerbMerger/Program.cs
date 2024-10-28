@@ -4,6 +4,8 @@ using VerbMerger.Merger;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // add configuration
 builder.Configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true);
 
@@ -45,5 +47,7 @@ app.MapGet("/api/admin/dump", async (IMergePersistence persistence) =>
     var dump = await persistence.DumpCache();
     return dump;
 }).WithName("DumpCache").WithOpenApi();
+
+app.MapDefaultEndpoints();
 
 app.Run();
