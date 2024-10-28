@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenAI.Extensions;
 using VerbMerger.Merger;
+using VerbMerger.Merger.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,14 +10,23 @@ builder.AddServiceDefaults();
 // add configuration
 builder.Configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true);
 
+builder.AddMongoDBClient("mongodb");
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddMemoryCache(opts =>
+{
+    const int megabyte = 1 << 20;
+    opts.SizeLimit = 20 * megabyte;
+});
 builder.Services.AddOpenAIService();
-builder.Services.AddSingleton<IMergerProompter, MergerProompter>();
-builder.Services.AddSingleton<IMergePersistence, InMemoryMergePersistence>();
+builder.Services.AddScoped<IMergerProompter, MergerProompter>();
+builder.Services.AddScoped<IMergePersistence, MongoDbMergePersistence>();
 builder.Services.AddScoped<IMergerRepository, MergerRepository>();
+
 
 var app = builder.Build();
 

@@ -1,14 +1,4 @@
-﻿namespace VerbMerger.Merger;
-
-public interface IMergePersistence
-{
-    public Task<MergeOutput?> GetPersistedOutput(MergeInput input);
-    public Task PersistOutput(MergeInput input, MergeOutput output);
-
-    public Task<IEnumerable<CacheDump>> DumpCache();
-}
-
-public record CacheDump(MergeInput Input, MergeOutput Output);
+﻿namespace VerbMerger.Merger.Persistence;
 
 public class InMemoryMergePersistence : IMergePersistence
 {

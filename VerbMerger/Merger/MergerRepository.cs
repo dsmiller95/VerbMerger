@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using VerbMerger.Merger.Persistence;
 
 namespace VerbMerger.Merger;
 
@@ -40,17 +41,5 @@ public class MergerRepository(
         var output = promptOutput.Single();
         await persistence.PersistOutput(input, output);
         return output;
-    }
-
-    private MergeOutput GetOutputInternal(MergeInput input)
-    {
-        var rng = new Random();
-        return rng.Next(0, 3) switch
-        {
-            0 => new MergeOutput(input.Subject, PartOfSpeech.Noun),
-            1 => new MergeOutput(input.Verb, PartOfSpeech.Verb),
-            2 => new MergeOutput(input.Object, PartOfSpeech.Noun),
-            _ => throw new ArgumentOutOfRangeException()
-        };
     }
 }
