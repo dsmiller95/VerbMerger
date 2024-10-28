@@ -30,7 +30,6 @@ public class MergerRepository(
         var persistedOutput = await persistence.GetPersistedOutput(input);
         if (persistedOutput != null)
         {
-            logger.LogInformation("Cache hit for {Input}", input);
             return persistedOutput;
         }
         
