@@ -29,6 +29,9 @@ body, html {
 .verb {
     background-color: #add8e6; /* Light blue */
 }
+.node.transitioning {
+    transition: all 0.5s;
+}
 #history {
     background: rgba(0, 0, 0, 0.7);
     color: white;

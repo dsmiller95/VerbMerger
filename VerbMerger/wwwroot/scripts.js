@@ -22,12 +22,6 @@ function selectedText() {
 function updateHistory() {
     $('#clickHistory').text(selectedText().join(' -> '));
 }
-function setHistoryResult(extraResult){
-    const history = $('#clickHistory');
-    const prevText = history.text();
-    const newText = prevText + " = " + extraResult;
-    history.text(newText);
-}
 
 /**
  * Handles node selection and updating the selected items.
@@ -46,12 +40,16 @@ function selectNode($node) {
 async function initiateMerge() {
     const [subject, verb, object] = selectedText();
     
+    const loadingNode = createLoadingNode();
+    clearSelections();
+    
     const mergeResult = await getMergeResult(subject, verb, object);
-    if(mergeResult){
-        displayResult(mergeResult.word, mergeResult.partOfSpeech);
+    if(mergeResult) {
+        displayResult(mergeResult.word, mergeResult.partOfSpeech, loadingNode);
+    }else{
+        $(loadingNode).remove();
     }
 
-    clearSelections();
 }
 
 /**
@@ -96,23 +94,16 @@ function clearSelections() {
  * Creates a new draggable node to display the result from the API.
  * @param {string} word - The word returned from the API.
  * @param {string} partOfSpeech - The part of speech of the returned word, either 'noun' or 'verb'.
+ * @param {HTMLElement} loadingNode - The existing loading node
  */
-function displayResult(word, partOfSpeech) {
-
-    setHistoryResult(word + ", " + partOfSpeech);
-    
+function displayResult(word, partOfSpeech, loadingNode) {
     const existing = $('.node').filter((_, node) => $(node).text() === word && $(node).attr('data-type') === partOfSpeech);
-    if(existing.length > 0) return; // Prevent duplicates
     
+    const $node = $(loadingNode);
     
-    const className = "node " + (partOfSpeech === 'verb' ? 'verb' : 'noun');
-    const $node = $('<div class="' + className + '"></div>');
+    $node.addClass(partOfSpeech === 'verb' ? 'verb' : 'noun');
     $node.text(word);
     $node.attr('data-type', partOfSpeech === 'verb' ? 'verb' : 'noun');
-    $node.css({
-        top: `${Math.random() * 200 + 100}px`,
-        left: `${Math.random() * 200 + 100}px`
-    });
 
     // Add click event and draggable functionality to the new node
     $node.on('click', () => {
@@ -120,8 +111,48 @@ function displayResult(word, partOfSpeech) {
         handleNodeClick($node);
     });
 
-    $('#workspace').append($node);
+    if(existing.length > 0) {
+        // animate the loading node towards the existing node, then clear it
+        const $existingNode = $(existing[0]);
+        const $loadingNode = $node;
+        
+        // Calculate the position difference
+        const existingOffset = $existingNode.offset();
+        const loadingOffset = $loadingNode.offset();
+        const deltaX = existingOffset.left - loadingOffset.left;
+        const deltaY = existingOffset.top - loadingOffset.top;
+        
+        // Apply the transition class and animate
+        $loadingNode.addClass('transitioning');
+        $loadingNode.css('transform', `translate(${deltaX}px, ${deltaY}px)`);
+
+        // Remove the loading node after the animation completes
+        $loadingNode.one('transitionend', () => {
+            $loadingNode.remove();
+        });
+
+        return;
+    }
+    
+    // only allow dragging if the node did not already exist
     interact($node[0]).draggable(defaultDraggableOptions);
+}
+
+/**
+ * Clears the current selections and resets the highlighted nodes.
+ * This function can be called to reset the selection state.
+ * @returns {HTMLElement} - The new loading node.
+ */
+function createLoadingNode(){
+    const $node = $('<div class="node"></div>');
+    $node.text("Loading...");
+    $node.css({
+        top: `${Math.random() * 200 + 100}px`,
+        left: `${Math.random() * 200 + 100}px`
+    });
+    $('#workspace').append($node);
+    
+    return $node.get(0);
 }
 
 /**
