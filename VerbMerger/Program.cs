@@ -13,8 +13,11 @@ builder.Configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange
 
 builder.Services.Configure<VerbMergerConfig>(builder.Configuration.GetSection(nameof(VerbMergerConfig)));
 
-
 builder.AddMongoDBClient("mongodb");
+
+builder.Services.AddSingleton<Instrumentation>();
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddSource(Instrumentation.ActivitySourceName));
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -27,7 +30,6 @@ builder.Services.AddMemoryCache(opts =>
     opts.SizeLimit = 20 * megabyte;
 });
 builder.Services.AddOpenAIService();
-builder.Services.AddSingleton<Instrumentation>();
 builder.Services.AddSingleton<IMergerBatchProompter, BatchProompter>();
 builder.Services.AddSingleton<IMergerProompter, MergerProompterBatchManager>();
 builder.Services.AddScoped<IMergePersistence, MongoDbMergePersistence>();
