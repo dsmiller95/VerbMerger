@@ -24,4 +24,6 @@ public class InMemoryMergePersistence : IMergePersistence
     {
         return Task.FromResult(_cache.Select(x => new CacheDump(x.Key, x.Value)));
     }
+
+    public Task Initialize() => Task.CompletedTask;
 }

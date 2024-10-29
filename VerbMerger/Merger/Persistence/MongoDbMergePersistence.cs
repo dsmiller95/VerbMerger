@@ -28,6 +28,17 @@ public class MongoDbMergePersistence : IMergePersistence
     {
         public ObjectId Id { get; init; } = ObjectId.Empty;
     }
+    
+    public Task Initialize() => CreateIndexesAsync();
+
+    private async Task CreateIndexesAsync()
+    {
+        var indexKeysDefinition = Builders<DbModel>.IndexKeys
+            .Hashed(x => x.Input);
+        var indexModel = new CreateIndexModel<DbModel>(indexKeysDefinition);
+        await _collection.Indexes.CreateOneAsync(indexModel);
+    }
+    
     public async Task<MergeOutput?> GetPersistedOutput(MergeInput input)
     {
         if(_memCache.TryGetValue(input, out MergeOutput? output))
@@ -35,8 +46,13 @@ public class MongoDbMergePersistence : IMergePersistence
             return output;
         }
         
-        var filter = Builders<DbModel>.Filter.Eq(x => x.Input, input);
-        var cursor = await _collection.FindAsync(filter);
+        var filter = Builders<DbModel>.Filter
+            .Eq(x => x.Input, input);
+        var findOptions = new FindOptions<DbModel, DbModel>
+        {
+            Limit = 1
+        };
+        var cursor = await _collection.FindAsync(filter, findOptions);
         var result = await cursor.FirstOrDefaultAsync();
 
         if (result == null) return null;
@@ -51,7 +67,6 @@ public class MongoDbMergePersistence : IMergePersistence
         var entryOptions = new MemoryCacheEntryOptions()
             .SetSize(input.Subject.Length + input.Verb.Length + input.Object.Length);
         _memCache.Set(input, output, entryOptions);
-        
         
         var filter = Builders<DbModel>.Filter.Eq(x => x.Input, input);
         var currentMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

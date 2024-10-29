@@ -38,6 +38,14 @@ builder.Services.AddScoped<IMergerRepository, MergerRepository>();
 
 var app = builder.Build();
 
+// run index creation
+var persistenceInitialize = Task.Run(async () =>
+{
+    using var scope = app.Services.CreateScope();
+    var persistence = scope.ServiceProvider.GetRequiredService<IMergePersistence>();
+    await persistence.Initialize();
+});
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -68,4 +76,6 @@ app.MapGet("/api/admin/dump", async (IMergePersistence persistence) =>
 
 app.MapDefaultEndpoints();
 
-app.Run();
+// ensure index creation finishes before app startup
+await persistenceInitialize;
+await app.RunAsync();
