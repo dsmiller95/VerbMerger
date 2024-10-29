@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenAI.Extensions;
+using VerbMerger;
 using VerbMerger.Merger;
 using VerbMerger.Merger.Persistence;
 
@@ -26,6 +27,7 @@ builder.Services.AddMemoryCache(opts =>
     opts.SizeLimit = 20 * megabyte;
 });
 builder.Services.AddOpenAIService();
+builder.Services.AddSingleton<Instrumentation>();
 builder.Services.AddSingleton<IMergerBatchProompter, BatchProompter>();
 builder.Services.AddSingleton<IMergerProompter, MergerProompterBatchManager>();
 builder.Services.AddScoped<IMergePersistence, MongoDbMergePersistence>();

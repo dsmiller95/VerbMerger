@@ -35,13 +35,15 @@ public class MongoDbMergePersistence : IMergePersistence
             return output;
         }
         
-        _logger.LogInformation("Cache miss for {Input}. Querying database to fill cache.", input);
         var filter = Builders<DbModel>.Filter.Eq(x => x.Input, input);
         var cursor = await _collection.FindAsync(filter);
         var result = await cursor.FirstOrDefaultAsync();
+
+        if (result == null) return null;
         
-        if(result != null) MemCacheOutput(input, result.Output);
-        return result?.Output;
+        _logger.LogInformation("Cache miss for {Input} resolved by database query.", input);
+        MemCacheOutput(input, result.Output);
+        return result.Output;
     }
 
     public async Task PersistOutput(MergeInput input, MergeOutput output)

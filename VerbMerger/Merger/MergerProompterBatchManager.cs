@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Options;
 
 namespace VerbMerger.Merger;
 
@@ -11,16 +12,21 @@ public class MergerProompterBatchManager : IMergerProompter, IDisposable
 {
     private readonly IMergerBatchProompter _proompter;
     private readonly IOptions<VerbMergerConfig> _options;
+    private readonly ILogger<BatchProompter> _logger;
+    private readonly ActivitySource _activitySource;
     private readonly PendingBatch _pendingBatch;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
-
+    
     public MergerProompterBatchManager(
         IMergerBatchProompter proompter,
         IOptions<VerbMergerConfig> options,
-        ILogger<BatchProompter> logger)
+        ILogger<BatchProompter> logger,
+        Instrumentation instrumentation)
     {
         _proompter = proompter;
         _options = options;
+        _logger = logger;
+        _activitySource = instrumentation.ActivitySource;
         _pendingBatch = CreateNewBatch();
     }
 
@@ -56,12 +62,23 @@ public class MergerProompterBatchManager : IMergerProompter, IDisposable
     public async Task<MergeOutput> Prompt(MergeInput input)
     {
         var request = new PromptRequest(input);
+
+        return await PromptInBatch(request);
+    }
+
+    private async Task<MergeOutput> PromptInBatch(PromptRequest request)
+    {
+        using var batchActivity = _activitySource.StartActivity();
+        batchActivity?.SetTag("Input", request.Input);
+        await _pendingBatch.WaitForRequest(request, batchActivity);
+        batchActivity?.SetTag("Output", request.Output);
         
-        await _pendingBatch.WaitForRequest(request);
         if(request.Output == null) throw new Exception("Prompt batcher failed to get output");
+        
         return request.Output;
     }
-    
+
+
     private PendingBatch CreateNewBatch()
     {
         var maxBatchSize = _options.Value.PromptMaxBatchSize;
@@ -130,42 +147,50 @@ public class MergerProompterBatchManager : IMergerProompter, IDisposable
             return new BatchedRequest(swapReqs, swapCompletion);
         }
         
-        public Task WaitForRequest(PromptRequest request)
+        public Task WaitForRequest(PromptRequest request, Activity? activity)
         {
-            Task completionTask;
+            // defer execution, to avoid all possible time inside the critical section, as well as deadlocks.
+            Func<Task> completionTask;
             lock (this)
             {
                 var isFirst = _requests.Count == 0;
                 _requests.Add(request);
                 var becameFull = _requests.Count == _maxBatchSize;
-                if (isFirst) completionTask = BatchDelayMonitorAsync();
-                else if (becameFull) completionTask = BatchCompleteAsync();
-                else completionTask = _batchCompletionSource.Task;
+                if (isFirst) completionTask = () => BatchDelayMonitorAsync(activity);
+                else if (becameFull) completionTask = () =>
+                {
+                    activity?.AddEvent(new("BatchFull"));
+                    return BatchCompleteAsync(activity);
+                };
+                else completionTask = () => _batchCompletionSource.Task;
             }
-            return completionTask;
+
+            return completionTask();
         }
         
         /// <summary>
         /// Wait for the maximum batch delay time, then process the batch, if it was not already processed.
         /// </summary>
-        private async Task BatchDelayMonitorAsync()
+        private async Task BatchDelayMonitorAsync(Activity? activity)
         {
             var delayTask = Task.Delay(_batchIntervalMs, _cancellation);
             var completed = await Task.WhenAny(delayTask, _batchCompletionSource.Task);
             if (completed != delayTask) return; // batch was processed
+            activity?.AddEvent(new("BatchTimeout"));
             
             // batch has timed out, process it
-            await BatchCompleteAsync();
+            await BatchCompleteAsync(activity);
         }
 
         /// <summary>
         /// Complete the batch by taking all requests out of the container and processing them.
         /// </summary>
-        private async Task BatchCompleteAsync()
+        private async Task BatchCompleteAsync(Activity? activity)
         {
             var takenBatch = TakeBatchedRequest();
             await _performBatch(takenBatch.Requests, _cancellation);
             takenBatch.CompletionSource.SetResult();
+            activity?.AddEvent(new("BatchExecuted"));
         }
 
         public void Dispose()
