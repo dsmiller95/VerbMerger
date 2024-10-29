@@ -8,10 +8,12 @@ public class MongoDbMergePersistence : IMergeResultPersistence, IMergeExampleSam
 {
     private readonly IMongoCollection<DbModel> _collection;
     private readonly ILogger<MongoDbMergePersistence> _logger;
+    private readonly IMergeResultSeeder _seeder;
 
-    public MongoDbMergePersistence(IMongoClient mongoClient, ILogger<MongoDbMergePersistence> logger)
+    public MongoDbMergePersistence(IMongoClient mongoClient, ILogger<MongoDbMergePersistence> logger, IMergeResultSeeder seeder)
     {
         _logger = logger;
+        _seeder = seeder;
 
         const string dbName = "verb_merger";
         const string collectionName = "merge_results";
@@ -25,6 +27,7 @@ public class MongoDbMergePersistence : IMergeResultPersistence, IMergeExampleSam
         long CreatedAtUnixMs)
     {
         public ObjectId Id { get; init; } = ObjectId.Empty;
+        public bool IsExemplar { get; init; } = false;
     }
 
     public async Task<IEnumerable<MergeResult>> SampleExamples(int sampleCount)
@@ -32,20 +35,69 @@ public class MongoDbMergePersistence : IMergeResultPersistence, IMergeExampleSam
         var queryable = _collection.AsQueryable();
 
         var query = queryable
+            .Where(x => x.IsExemplar)
             .Sample(sampleCount)
             .Select(x => new MergeResult(x.Input, x.Output));
 
         return await query.ToListAsync();
     }
 
-    public Task Initialize() => CreateIndexesAsync();
+    public async Task Initialize()
+    {
+        try
+        {
+            await CreateIndexesAsync();
+            await SeedExemplarData();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to initialize persistence");
+            throw;
+        }
+    }
 
     private async Task CreateIndexesAsync()
     {
-        var indexKeysDefinition = Builders<DbModel>.IndexKeys
-            .Hashed(x => x.Input);
-        var indexModel = new CreateIndexModel<DbModel>(indexKeysDefinition);
-        await _collection.Indexes.CreateOneAsync(indexModel);
+        var indexes = new CreateIndexModel<DbModel>[]
+        {
+            new(Builders<DbModel>.IndexKeys.Hashed(x => x.Input), new CreateIndexOptions
+            {
+            }),
+            new(Builders<DbModel>.IndexKeys.Ascending(x => x.Input), new CreateIndexOptions
+            {
+                Unique = true
+            })
+        };
+        
+        await _collection.Indexes.CreateManyAsync(indexes);
+    }
+    
+    private async Task SeedExemplarData()
+    {
+        var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var seedData = _seeder.GetExemplarSeed().Select(
+            x => new DbModel(x.Input, x.Output, currentTime)
+        {
+            IsExemplar = true
+        });
+        await BulkUpsert(seedData);
+    }
+
+    private async Task BulkUpsert(IEnumerable<DbModel> models)
+    {
+        var bulkOps = models
+            .Select(item =>
+            {
+                var filter = Builders<DbModel>.Filter.Eq(x => x.Input, item.Input);
+                var update = Builders<DbModel>.Update
+                        .Set(x => x.Output, item.Output)
+                        .Set(x => x.CreatedAtUnixMs, item.CreatedAtUnixMs)
+                        .Set(x => x.IsExemplar, item.IsExemplar)
+                    ;
+                return new UpdateOneModel<DbModel>(filter, update) { IsUpsert = true };
+            });
+        
+        await _collection.BulkWriteAsync(bulkOps);
     }
     
     public async Task<MergeOutput?> GetPersistedOutput(MergeInput input)

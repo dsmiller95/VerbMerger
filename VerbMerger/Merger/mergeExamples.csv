@@ -1,0 +1,32 @@
+﻿Subject,Verb,Object,Word,PartOfSpeech
+Water,Add,Fire,Steam,Noun
+Fire,Add,Water,Extinguish,Verb
+Stone,Chip,Obsidian,Blade,Noun
+Fire,Harden,Stone,Obsidian,Noun
+Air,Add,Mud,Splatter,Verb
+Mountain,Crystallize,Mountain,Peak,Noun
+Cliff,Char,Peak,Nonsense,Noun
+Soil,Add,Ash,Fertilize,Verb
+Water,Fertilize,Soil,Grow,Verb
+Water,Fertilize,Air,Life,Noun
+Life,Nourish,Life,Reproduce,Verb
+Whirlwind,Add,Whirlwind,Chaos,Noun
+Air,Add,Air,Whirlwind,Noun
+Mud,Add,Fire,Harden,Verb
+Chaos,Grow,Life,Evolve,Verb
+Chaos,Add,Order,Chaos,Noun
+Order,Add,Chaos,Knowledge,Noun
+Knowledge,Reproduce,Knowledge,Book,Noun
+Stone,Harden,Book,Tablet,Noun
+Book,Crystalize,War,War and Peace,Noun
+Book,Solidify,Fire,Fahrenheit 451,Noun
+Book,Solidify,Water,Waterworld,Noun
+Book,Crystalize,Fertility,Farmers Almanac,Noun
+Book,Solidify,Air,Forecast,Noun
+Knowledge,Fertilize,Life,Human,Noun
+Human,Add,Book,Scribe,Noun
+Mud,Remove,Water,Earth,Noun
+Mist,Remove,Air,Condensation,Noun
+Condensation,Remove,Water,Dust,Noun
+Dust,Remove,Dirt,Nothing,Noun
+Nothing,Add,Water,Water,Noun

@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.Text;
+using Microsoft.Extensions.Options;
 using OpenAI.Interfaces;
 using OpenAI.ObjectModels;
 using OpenAI.ObjectModels.RequestModels;
+using VerbMerger.Merger.Persistence;
 
 namespace VerbMerger.Merger;
 
@@ -12,23 +14,25 @@ public interface IMergerBatchProompter
 
 public class BatchProompter(
     IOpenAIService aiService,
+    IMergeExampleSampler exampleSampler,
     IOptions<VerbMergerConfig> options,
-    ILogger<BatchProompter> logger) : IMergerBatchProompter
+    ILogger<BatchProompter> logger
+    ) : IMergerBatchProompter
 {
-    private const string SystemPrompt = """
+    private const string SystemPromptBase = """
 You are an alchemical wizard, and also a fluent storyteller. You want to tell the story of the world you have grown up in.
 You can only respond in very specific ways because of a potion which went wrong after you formulated it.
-You want to communicate how the world works, as well as tell a story about how you got to where you are. You can only respond in very specific ways.
-Your goal is first to communicate how the world works, but also build towards telling your story, and what happened to you.
-You have knowledge of current events and popular culture such as pirates, ninjas, TV, art, etc.
+Your goal is to communicate how the world works and pass on knowledge of popular culture (pirates of the carribiean, war and peace,
+marvel comics, cars, corn, trains, earth, mars, Democracy, Plato, Rome, etc) to your students. When reasonable, be specific and use proper nouns.
 
 Your students will give you a 3-word sentence, and you will tell them the result of it.
-For example, your student might say "Fire Mix Water", and you would respond with "Steam".
-Or your student will say "Fire Mix Mud", and you would respond with "Harden".
+For example, your student might say "Water Add Fire", and you would respond with "Steam".
+Or your student will say "Mud Add Fire", and you would respond with "Harden".
 The Order of the words matters. the first word is what is performing the action, the last word is what the action is being performed on.
-"Mud Mix Fire" would result in "Extinguish" for example.
+"Fire Add Mud" would result in "Extinguish" for example.
 
-You can only respond with a concept which is either a noun or verb, picking whichever one is most interesting and communicates the most about the world and your story.
+You can only respond with a phrase which is either an object ("San fransico", "Fire", "My Thumb") or action ("Add", "Breathe", "Harden"),
+ picking whichever one is most interesting and communicates the most about the world.
 It may not be a single word but it should never be more than 3. Most of the time you should respond with exactly one word.
 If a combination does not make sense, or does not work, then the combination results in a regularly formatted [Subject] | [Verb] | [Object] | Nonsense | Noun
 
@@ -38,47 +42,39 @@ Here are examples of the format of the requests and responses. DO NOT DEVIATE FR
 
 Request:
 
-Fire | Mix | Water
-Water | Mix | Fire
-Water | Mix | Earth
-Earth | Mix | Water
-Mud | Mix | Air
-Air | Mix | Fire
-Fire | Mix | Air
-Water | Mix | Water
-Earth | Mix | Fire
-Fire | Mix | Earth
-
-Your Response:
-
-Fire | Mix | Water | Steam | Noun
-Water | Mix | Fire | Extinguish | Verb
-Water | Mix | Earth | Mud | Noun
-Earth | Mix | Water | Silt | Noun
-Mud | Mix | Air | Splatter | Verb
-Air | Mix | Fire | Bellows | Noun
-Fire | Mix | Air | Smoke | Noun
-Water | Mix | Water | Ocean | Noun
-Earth | Mix | Fire | Sand | Noun
-Fire | Mix | Earth | Earth | Noun
-
-Request:
-
+Water | Add | Fire
+Fire | Add | Water
+Earth | Add | Water
+Water | Add | Earth
+Air | Add | Mud
+Fire | Add | Air
 Stone | Harden | Obsidian
 Stone | Chip | Obsidian
 Forest | Breathe | Mist
 Ember | Form | Lava
-Dust | Scatter | Fire
-Dew | Condense | Leaf
 
 Your Response:
 
+Water | Add | Fire | Steam | Noun
+Fire | Add | Water | Extinguish | Verb
+Earth | Add | Water | Mud | Noun
+Water | Add | Earth | Silt | Noun
+Air | Add | Mud | Splatter | Verb
+Fire | Add | Air | Bellows | Noun
 Stone | Harden | Obsidian | Nonsense | Noun
 Stone | Chip | Obsidian | Blade | Noun
 Forest | Breathe | Mist | Drink | Verb
 Ember | Form | Lava | Melt | Verb
-Dust | Scatter | Fire | Spark | Noun
-Dew | Condense | Leaf | Droplet | Noun
+
+Request:
+
+Spark | Awaken | Earth
+Life | Add | Knowledge
+
+Your Response:
+
+Spark | Awaken | Earth | Life | Noun
+Life | Add | Knowledge | Human | Noun
 
 Request:
 
@@ -96,23 +92,17 @@ Thunderstorm Clouds | Gather Above | Distant Horizon | Darken | Verb
 Ocean Waves | Crash Against | Rocky Shore | Foam | Noun
 Winter Chill | Settles Into | Quiet Lake | Freeze | Verb
 
-Request:
-
-Spark | Awaken | Earth
-Knowledge | Mix | Life
-
-Your Response:
-
-Spark | Awaken | Earth | Life | Noun
-Knowledge | Mix | Life | Human | Noun
-
-Request:
+Following are further examples of what your responses could be:
 """;
 
     private const string UserPromptPostFix = @"
 
 Your Response:
 ";
+
+    private string? _cachedSystemPrompt = null;
+    private DateTime _lastSystemPromptTime = DateTime.MinValue;
+    
     
     public async Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input, CancellationToken cancellationToken)
     {
@@ -127,7 +117,7 @@ Your Response:
         {
             Messages = new List<ChatMessage>
             {
-                ChatMessage.FromSystem(SystemPrompt),
+                ChatMessage.FromSystem(await GetSystemPrompt()),
                 ChatMessage.FromUser(userPrompt + UserPromptPostFix)
             },
             Model = Models.Gpt_4o_mini,
@@ -159,6 +149,32 @@ Your Response:
     private string GetPrompt(IEnumerable<MergeInput> inputBatch)
     {
         return string.Join("\n", inputBatch.Select(x => $"{x.Subject} | {x.Verb} | {x.Object}"));
+    }
+
+    private async Task<string> GetSystemPrompt()
+    {
+        if(this._cachedSystemPrompt != null && 
+           DateTime.UtcNow - _lastSystemPromptTime < TimeSpan.FromSeconds(options.Value.SystemPromptCacheTimeSeconds))
+        {
+            return _cachedSystemPrompt;
+        }
+        
+        var textBuilder = new StringBuilder();
+        textBuilder.Append(SystemPromptBase);
+        textBuilder.Append("\n");
+        var examples = await exampleSampler.SampleExamples(options.Value.SystemPromptExampleSampleCount);
+        textBuilder.Append(GetExampleCases(examples));
+        textBuilder.Append("\nRequest:\n");
+        
+        _cachedSystemPrompt = textBuilder.ToString();
+        logger.LogInformation("Rebuilt system prompt to cache: {Prompt}", _cachedSystemPrompt);
+        _lastSystemPromptTime = DateTime.UtcNow;
+        return _cachedSystemPrompt;
+    }
+
+    private string GetExampleCases(IEnumerable<MergeResult> exampleBatch)
+    {
+        return string.Join("\n", exampleBatch.Select(x => $"{x.Input.Subject} | {x.Input.Verb} | {x.Input.Object} | {x.Output.Word} | {x.Output.PartOfSpeech}"));
     }
     
     private IEnumerable<MergeOutput> GetParsedResponse(string completionResponse)

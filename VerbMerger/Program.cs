@@ -30,10 +30,11 @@ builder.Services.AddMemoryCache(opts =>
     opts.SizeLimit = 20 * megabyte;
 });
 builder.Services.AddOpenAIService();
+builder.Services.AddTransient<IMergeResultSeeder, MergeResultSeeder>();
 builder.Services.AddTransient<IMergeResultPersistence, MongoDbMergePersistence>();
 builder.Services.AddTransient<IMergeExampleSampler, MongoDbMergePersistence>();
+builder.Services.AddTransient<IMergerBatchProompter, BatchProompter>();
 
-builder.Services.AddSingleton<IMergerBatchProompter, BatchProompter>();
 builder.Services.AddSingleton<IMergerProompter, MergerProompterBatchManager>();
 
 builder.Services.AddScoped<IMergeRepository, MergeRepository>();
@@ -81,5 +82,12 @@ app.MapGet("/api/admin/dump", async (IMergeExampleSampler sampler) =>
 app.MapDefaultEndpoints();
 
 // ensure index creation finishes before app startup
-await persistenceInitialize;
+try
+{
+    await persistenceInitialize;
+}
+catch
+{
+    await app.DisposeAsync();
+}
 await app.RunAsync();
