@@ -14,20 +14,20 @@ public enum PartOfSpeech
     Noun
 }
 
-public interface IMergerRepository
+public interface IMergerService
 {
     public Task<MergeOutput> GetOutput(MergeInput input);
 }
 
-public class MergerRepository(
-    ILogger<MergerRepository> logger,
-    IMergePersistence persistence,
+public class MergerService(
+    ILogger<MergerService> logger,
+    IMergeRepository repository,
     IMergerProompter proompter
-    ) : IMergerRepository
+    ) : IMergerService
 {
     public async Task<MergeOutput> GetOutput(MergeInput input)
     {
-        var persistedOutput = await persistence.GetPersistedOutput(input);
+        var persistedOutput = await repository.FindOutput(input);
         if (persistedOutput != null)
         {
             return persistedOutput;
@@ -36,7 +36,7 @@ public class MergerRepository(
         logger.LogInformation("Cache miss for {Input}", input);
 
         var output = await proompter.Prompt(input);
-        await persistence.PersistOutput(input, output);
+        await repository.SetOutput(input, output);
         return output;
     }
 }

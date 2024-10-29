@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
 using OpenAI.Interfaces;
-using OpenAI.Managers;
 using OpenAI.ObjectModels;
 using OpenAI.ObjectModels.RequestModels;
 

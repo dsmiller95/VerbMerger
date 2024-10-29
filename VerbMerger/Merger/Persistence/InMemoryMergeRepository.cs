@@ -1,10 +1,10 @@
 ﻿namespace VerbMerger.Merger.Persistence;
 
-public class InMemoryMergePersistence : IMergePersistence
+public class InMemoryMergeRepository : IMergeRepository, IMergeExampleSampler
 {
     private readonly Dictionary<MergeInput, MergeOutput> _cache = new();
 
-    public Task<MergeOutput?> GetPersistedOutput(MergeInput input)
+    public Task<MergeOutput?> FindOutput(MergeInput input)
     {
         if (_cache.TryGetValue(input, out var output))
         {
@@ -14,16 +14,14 @@ public class InMemoryMergePersistence : IMergePersistence
         return Task.FromResult<MergeOutput?>(null);
     }
 
-    public Task PersistOutput(MergeInput input, MergeOutput output)
+    public Task SetOutput(MergeInput input, MergeOutput output)
     {
         _cache[input] = output;
         return Task.CompletedTask;
     }
 
-    public Task<IEnumerable<CacheDump>> DumpCache()
+    public Task<IEnumerable<MergeResult>> SampleExamples(int exampleCount)
     {
-        return Task.FromResult(_cache.Select(x => new CacheDump(x.Key, x.Value)));
+        return Task.FromResult(_cache.Take(exampleCount).Select(x => new MergeResult(x.Key, x.Value)));
     }
-
-    public Task Initialize() => Task.CompletedTask;
 }

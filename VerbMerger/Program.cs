@@ -30,10 +30,14 @@ builder.Services.AddMemoryCache(opts =>
     opts.SizeLimit = 20 * megabyte;
 });
 builder.Services.AddOpenAIService();
+builder.Services.AddTransient<IMergeResultPersistence, MongoDbMergePersistence>();
+builder.Services.AddTransient<IMergeExampleSampler, MongoDbMergePersistence>();
+
 builder.Services.AddSingleton<IMergerBatchProompter, BatchProompter>();
 builder.Services.AddSingleton<IMergerProompter, MergerProompterBatchManager>();
-builder.Services.AddScoped<IMergePersistence, MongoDbMergePersistence>();
-builder.Services.AddScoped<IMergerRepository, MergerRepository>();
+
+builder.Services.AddScoped<IMergeRepository, MergeRepository>();
+builder.Services.AddScoped<IMergerService, MergerService>();
 
 
 var app = builder.Build();
@@ -42,7 +46,7 @@ var app = builder.Build();
 var persistenceInitialize = Task.Run(async () =>
 {
     using var scope = app.Services.CreateScope();
-    var persistence = scope.ServiceProvider.GetRequiredService<IMergePersistence>();
+    var persistence = scope.ServiceProvider.GetRequiredService<IMergeResultPersistence>();
     await persistence.Initialize();
 });
 
@@ -60,17 +64,17 @@ app.MapGet("/api/merge", async (
         [FromQuery] string subject,
         [FromQuery] string verb,
         [FromQuery] string @object,
-        IMergerRepository repository) =>
+        IMergerService mergerService) =>
     {
-        var output = await repository.GetOutput(new MergeInput(subject, verb, @object));
+        var output = await mergerService.GetOutput(new MergeInput(subject, verb, @object));
         return output;
     })
     .WithName("Merge")
     .WithOpenApi();
 
-app.MapGet("/api/admin/dump", async (IMergePersistence persistence) =>
+app.MapGet("/api/admin/dump", async (IMergeExampleSampler sampler) =>
 {
-    var dump = await persistence.DumpCache();
+    var dump = await sampler.SampleExamples(100);
     return dump;
 }).WithName("DumpCache").WithOpenApi();
 
