@@ -1,12 +1,23 @@
 namespace VerbMerger.Merger.Persistence;
 
 
-public interface IMergeExampleSampler
+public interface IMergeSampler
 {
     /// <summary>
     /// Samples representative or random examples from the merge results.
     /// </summary>
     public Task<IEnumerable<MergeResult>> SampleExamples(int exampleCount);
+
+    public Task<IEnumerable<MergeFilterResult>> Filter(IEnumerable<MergeInput> inputs);
+}
+
+public record MergeFilterResult(MergeInput Input, FilterStatus Status);
+
+
+public enum FilterStatus
+{
+    Valid,
+    TermMissing,
 }
 
 /// <summary>

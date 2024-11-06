@@ -14,7 +14,7 @@ public interface IMergerBatchProompter
 
 public class BatchProompter(
     IOpenAIService aiService,
-    IMergeExampleSampler exampleSampler,
+    IMergeSampler sampler,
     IOptions<VerbMergerConfig> options,
     ILogger<BatchProompter> logger
     ) : IMergerBatchProompter
@@ -162,7 +162,7 @@ Your Response:
         var textBuilder = new StringBuilder();
         textBuilder.Append(SystemPromptBase);
         textBuilder.Append("\n");
-        var examples = await exampleSampler.SampleExamples(options.Value.SystemPromptExampleSampleCount);
+        var examples = await sampler.SampleExamples(options.Value.SystemPromptExampleSampleCount);
         textBuilder.Append(GetExampleCases(examples));
         textBuilder.Append("\nRequest:\n");
         

@@ -5,6 +5,14 @@ namespace VerbMerger.Merger;
 public interface IMergeResultSeeder
 {
     public IEnumerable<MergeResult> GetExemplarSeed();
+
+    public HashSet<Word> GetAllValidWords()
+    {
+        // TODO: Cache This. As Static ideally, because seeder is injected as transient.
+        return GetExemplarSeed()
+            .SelectMany(x => x.Output.ToWords().Concat(x.Input.ToWords()))
+            .ToHashSet();
+    }
 }
 
 public class MergeResultSeeder : IMergeResultSeeder

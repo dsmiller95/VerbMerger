@@ -4,7 +4,7 @@ using MongoDB.Driver.Linq;
 
 namespace VerbMerger.Merger.Persistence;
 
-public class MongoDbMergePersistence : IMergeResultPersistence, IMergeExampleSampler
+public class MongoDbMergePersistence : IMergeResultPersistence, IMergeSampler
 {
     private readonly IMongoCollection<DbModel> _collection;
     private readonly ILogger<MongoDbMergePersistence> _logger;
@@ -40,6 +40,53 @@ public class MongoDbMergePersistence : IMergeResultPersistence, IMergeExampleSam
             .Select(x => new MergeResult(x.Input, x.Output));
 
         return await query.ToListAsync();
+    }
+
+    public async Task<IEnumerable<MergeFilterResult>> Filter(IEnumerable<MergeInput> inputs)
+    {
+        var allValidFromSeed = this._seeder.GetAllValidWords();
+
+        var mergeInputs = inputs.ToList();
+        
+        var notFoundWords = mergeInputs
+            .SelectMany(x => x.ToWords())
+            .Where(x => !allValidFromSeed.Contains(x))
+            .Select(x => x.ToMergeOutput())
+            .ToHashSet();
+        if (notFoundWords.Count > 100)
+        {
+            _logger.LogWarning("Filtering too many words, may negatively affect query performance. {WordCount}", notFoundWords.Count);
+        }
+        
+        
+        var filter = Builders<DbModel>.Filter
+            .In(x => x.Output, notFoundWords);
+        
+        var pipline = new EmptyPipelineDefinition<DbModel>()
+            .Match(filter)
+            .Project(x => x.Output)
+            .Group(x => x, g => g.Key)
+            ;
+
+        var results = await _collection.AggregateAsync(pipline);
+        var foundWords = await results.ToListAsync();
+
+        notFoundWords.ExceptWith(foundWords);
+
+        var result = mergeInputs.Select(x =>
+        {
+            FilterStatus status = FilterStatus.Valid;
+            var allWords = x.ToWords().Select(w => w.ToMergeOutput());
+            if (allWords.Any(w => notFoundWords.Contains(w)))
+            {
+                // if any words in the input are not found:
+                status = FilterStatus.TermMissing;
+            }
+
+            return new MergeFilterResult(x, status);
+        });
+        
+        return result;
     }
 
     public async Task Initialize()

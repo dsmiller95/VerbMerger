@@ -32,7 +32,7 @@ builder.Services.AddMemoryCache(opts =>
 builder.Services.AddOpenAIService();
 builder.Services.AddTransient<IMergeResultSeeder, MergeResultSeeder>();
 builder.Services.AddTransient<IMergeResultPersistence, MongoDbMergePersistence>();
-builder.Services.AddTransient<IMergeExampleSampler, MongoDbMergePersistence>();
+builder.Services.AddTransient<IMergeSampler, MongoDbMergePersistence>();
 builder.Services.AddTransient<IMergerBatchProompter, BatchProompter>();
 
 builder.Services.AddSingleton<IMergerProompter, MergerProompterBatchManager>();
@@ -73,7 +73,7 @@ app.MapGet("/api/merge", async (
     .WithName("Merge")
     .WithOpenApi();
 
-app.MapGet("/api/admin/dump", async (IMergeExampleSampler sampler) =>
+app.MapGet("/api/admin/dump", async (IMergeSampler sampler) =>
 {
     var dump = await sampler.SampleExamples(100);
     return dump;
