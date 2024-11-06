@@ -58,20 +58,27 @@ public class MongoDbMergePersistence : IMergeResultPersistence, IMergeSampler
             _logger.LogWarning("Filtering too many words, may negatively affect query performance. {WordCount}", notFoundWords.Count);
         }
         
+        if(notFoundWords.Count <= 0)
+        {
+            return mergeInputs.Select(x => new MergeFilterResult(x, FilterStatus.Valid));
+        }
+        
         
         var filter = Builders<DbModel>.Filter
-            .In(x => x.Output, notFoundWords);
+            .In(x => x.Output, notFoundWords.ToList());
         
-        var pipline = new EmptyPipelineDefinition<DbModel>()
+        var pipeline = new EmptyPipelineDefinition<DbModel>()
             .Match(filter)
-            .Project(x => x.Output)
-            .Group(x => x, g => g.Key)
+            .Group(x => x.Output, g => new
+            {
+                _id = g.Key
+            })
             ;
 
-        var results = await _collection.AggregateAsync(pipline);
+        var results = await _collection.AggregateAsync(pipeline);
         var foundWords = await results.ToListAsync();
 
-        notFoundWords.ExceptWith(foundWords);
+        notFoundWords.ExceptWith(foundWords.Select(x => x._id));
 
         var result = mergeInputs.Select(x =>
         {

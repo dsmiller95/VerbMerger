@@ -115,6 +115,19 @@ Your Response:
             .Where(x => x.value.Status == FilterStatus.Valid)
             .Select(x => x.index).ToList();
         var allowedPrompts = allowedPromptIndexesInInput.Select(x => filterInput[x].Input).ToList();
+        if (allowedPrompts.Count == 0)
+        {
+            return filterInput.Select(x => new MergeOutputResult
+            {
+                Output = null,
+                Status = x.Status switch
+                {
+                    FilterStatus.Valid => throw new InvalidOperationException("unreachable"),
+                    FilterStatus.TermMissing => MergeOutputStatus.InputTermNotPreviouslyGenerated,
+                    _ => throw new ArgumentOutOfRangeException()
+                }
+            }).ToList();
+        }
         
         var promptResults = 
             (await PromptBatchUnfiltered(allowedPrompts, cancellationToken)).ToList();
@@ -151,9 +164,20 @@ Your Response:
         return result;
     }
     
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="input">must be non-empty</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
     private async Task<IEnumerable<MergeOutput>> PromptBatchUnfiltered(IEnumerable<MergeInput> input, CancellationToken cancellationToken)
     {
         input = input.ToList();
+        if (!input.Any())
+        {
+            throw new ArgumentException("input must be non-empty", nameof(input));
+        }
         
         var userPrompt = GetPrompt(input);
         logger.LogInformation("Prompting with {Prompt}", userPrompt);
