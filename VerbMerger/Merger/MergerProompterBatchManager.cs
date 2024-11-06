@@ -5,7 +5,7 @@ namespace VerbMerger.Merger;
 
 public interface IMergerProompter
 {
-    public Task<MergeOutput> Prompt(MergeInput input);
+    public Task<MergeOutputResult> Prompt(MergeInput input);
 }
 
 public class MergerProompterBatchManager : IMergerProompter, IDisposable
@@ -55,18 +55,18 @@ public class MergerProompterBatchManager : IMergerProompter, IDisposable
     private class PromptRequest(MergeInput input)
     {
         public MergeInput Input { get; } = input;
-        public MergeOutput? Output { get; set; } = null;
+        public MergeOutputResult? Output { get; set; } = null;
     }
 
 
-    public async Task<MergeOutput> Prompt(MergeInput input)
+    public async Task<MergeOutputResult> Prompt(MergeInput input)
     {
         var request = new PromptRequest(input);
 
         return await PromptInBatch(request);
     }
 
-    private async Task<MergeOutput> PromptInBatch(PromptRequest request)
+    private async Task<MergeOutputResult> PromptInBatch(PromptRequest request)
     {
         using var batchActivity = _activitySource.StartActivity();
         batchActivity?.SetTag("Input", request.Input);
@@ -75,7 +75,7 @@ public class MergerProompterBatchManager : IMergerProompter, IDisposable
         
         if(request.Output == null) throw new Exception("Prompt batcher failed to get output");
         
-        return request.Output;
+        return request.Output.Value;
     }
 
 

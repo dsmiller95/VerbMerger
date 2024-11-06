@@ -9,8 +9,10 @@ namespace VerbMerger.Merger;
 
 public interface IMergerBatchProompter
 {
-    public Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input, CancellationToken cancellationToken);
+    public Task<IEnumerable<MergeOutputResult>> PromptBatch(IEnumerable<MergeInput> input, CancellationToken cancellationToken);
 }
+
+
 
 public class BatchProompter(
     IOpenAIService aiService,
@@ -104,9 +106,55 @@ Your Response:
     private DateTime _lastSystemPromptTime = DateTime.MinValue;
     
     
-    public async Task<IEnumerable<MergeOutput>> PromptBatch(IEnumerable<MergeInput> input, CancellationToken cancellationToken)
+    public async Task<IEnumerable<MergeOutputResult>> PromptBatch(IEnumerable<MergeInput> inputEnum, CancellationToken cancellationToken)
+    {
+        var filterInput = (await sampler.Filter(inputEnum)).ToList();
+
+        var allowedPromptIndexesInInput = filterInput
+            .Select((value, index) => (value, index))
+            .Where(x => x.value.Status == FilterStatus.Valid)
+            .Select(x => x.index).ToList();
+        var allowedPrompts = allowedPromptIndexesInInput.Select(x => filterInput[x].Input).ToList();
+        
+        var promptResults = 
+            (await PromptBatchUnfiltered(allowedPrompts, cancellationToken)).ToList();
+        
+        var result = filterInput.Select((x, i) =>
+        {
+            var status = x.Status switch
+            {
+                FilterStatus.Valid => MergeOutputStatus.Valid,
+                FilterStatus.TermMissing => MergeOutputStatus.InputTermNotPreviouslyGenerated,
+                _ => throw new ArgumentOutOfRangeException()
+            }; 
+            return new MergeOutputResult
+            {
+                Output = null,
+                Status = status
+            };
+        }).ToList();
+
+        for (int i = 0; i < allowedPromptIndexesInInput.Count(); i++)
+        {
+            var inputIndex = allowedPromptIndexesInInput[i];
+            var promptOutput = promptResults[i];
+
+            var res = result[inputIndex];
+            if (res.Status != MergeOutputStatus.Valid)
+            {
+                logger.LogCritical("Invalid status for valid prompt. logic error.");
+            }
+            res.Output = promptOutput;
+            result[inputIndex] = res;
+        }
+        
+        return result;
+    }
+    
+    private async Task<IEnumerable<MergeOutput>> PromptBatchUnfiltered(IEnumerable<MergeInput> input, CancellationToken cancellationToken)
     {
         input = input.ToList();
+        
         var userPrompt = GetPrompt(input);
         logger.LogInformation("Prompting with {Prompt}", userPrompt);
         

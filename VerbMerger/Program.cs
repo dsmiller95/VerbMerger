@@ -68,7 +68,13 @@ app.MapGet("/api/merge", async (
         IMergerService mergerService) =>
     {
         var output = await mergerService.GetOutput(new MergeInput(subject, verb, @object));
-        return output;
+        if (output.IsSuccess) return Results.Json(output);
+
+        return Results.UnprocessableEntity(new
+        {
+            error = "Failed to merge",
+            status = output.Status
+        });
     })
     .WithName("Merge")
     .WithOpenApi();
