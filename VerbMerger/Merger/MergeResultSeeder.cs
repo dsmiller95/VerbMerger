@@ -49,6 +49,7 @@ Mist,Remove,Air,Condensation,Noun
 Condensation,Remove,Water,Dust,Noun
 Dust,Remove,Dirt,Nothing,Noun
 Nothing,Add,Water,Water,Noun
+Noun,Add,Verb,Language,Noun
 ";
     
     public IEnumerable<MergeResult> GetExemplarSeed()
