@@ -165,10 +165,7 @@ public class MongoDbMergePersistence : IMergeResultPersistence, IMergeSampler
         var cursor = await _collection.FindAsync(filter, findOptions);
         var result = await cursor.FirstOrDefaultAsync();
 
-        if (result == null) return null;
-        
-        _logger.LogInformation("Cache miss for {Input} resolved by database query.", input);
-        return result.Output;
+        return result?.Output;
     }
 
     public async Task PersistOutput(MergeInput input, MergeOutput output)
