@@ -12,8 +12,18 @@ builder.AddServiceDefaults();
 builder.Configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true);
 
 builder.Services.Configure<VerbMergerConfig>(builder.Configuration.GetSection(nameof(VerbMergerConfig)));
+builder.Services.Configure<MongoAtlasConnectionOptions>(builder.Configuration.GetSection(nameof(MongoAtlasConnectionOptions)));
 
-builder.AddMongoDBClient("mongodb");
+MongoAtlasConnectionOptions mongoOptions = builder.Configuration.GetSection(nameof(MongoAtlasConnectionOptions)).Get<MongoAtlasConnectionOptions>() ?? throw new InvalidOperationException();
+
+builder.AddMongoDBClient("mongodb",
+    settings =>
+    {
+        if (!builder.Environment.IsDevelopment())
+        {
+            settings.ConnectionString = mongoOptions.ConnectionString;
+        }
+    });
 
 builder.Services.AddSingleton<Instrumentation>();
 builder.Services.AddOpenTelemetry()

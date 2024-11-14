@@ -9,3 +9,7 @@ public class VerbMergerConfig
     public int PromptMaxBatchSize { get; set; } = 30;
     public int PromptBatchIntervalMs { get; set; } = 5000;
 }
+
+public class MongoAtlasConnectionOptions {
+    public string ConnectionString { get; set; } = "";
+}
