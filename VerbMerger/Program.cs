@@ -19,7 +19,7 @@ MongoAtlasConnectionOptions mongoOptions = builder.Configuration.GetSection(name
 builder.AddMongoDBClient("mongodb",
     settings =>
     {
-        if (!builder.Environment.IsDevelopment())
+        if (true) //!builder.Environment.IsDevelopment())
         {
             settings.ConnectionString = mongoOptions.ConnectionString;
         }
